@@ -14,6 +14,7 @@ namespace AILib
         public double bias;
         public double biasbound;
         public List<double> weights;
+        double wd = 10;
 
         public object Clone()
         {
@@ -31,29 +32,31 @@ namespace AILib
             for (int i = 0; i < weights.Count; i++)
             {
                 double offset = 0;
-                double diapason =Math.Abs(2*Math.Pow(badness, 1));
-                if ((weights[i] + diapason/2) > 1) 
-                    offset = 1 - diapason/2 - weights[i];
-                if ((weights[i] - diapason/2) < -1) 
-                    offset = -1*weights[i] + diapason/2-1; 
-                weights[i] += (MHeleper.RandomDouble() - 0.5) * diapason + offset;
-                if (weights[i] > 1) weights[i] = 1;
-                if (weights[i] < -1) weights[i] = -1;
+                double diap =Math.Abs(2*Math.Pow(badness, 1));
+                diap *= wd;
+                diap *= 2;
+                if ((weights[i] + diap / 2) > wd)
+                    offset = wd - diap / 2 - weights[i];
+                if ((weights[i] - diap / 2) < -1 * wd)
+                    offset = -1 * weights[i] + diap / 2 - wd;
+                weights[i] += (MHeleper.RandomDouble() - 0.5) * diap + offset;
+                if (weights[i] > wd) weights[i] = wd;
+                if (weights[i] < -1 * wd) weights[i] = -1 * wd;
             }
         }
 
         public void RandBias(double goodness)
         {
             double badness = (1 - goodness);
-            double diapason = biasbound * 2 * Math.Pow(badness, 1);
+            double diap = biasbound * 2 * Math.Pow(badness, 1);
             double offset = 0;
-            if ((bias + diapason / 2) > biasbound)
-                offset = biasbound - diapason / 2 - bias;
-            if ((bias - diapason / 2) < -1 * biasbound)
-                offset = -1 * bias + diapason / 2 - biasbound;
-            bias += (MHeleper.RandomDouble() - 0.5) * diapason + offset;
-            if (bias > biasbound) bias = biasbound;
-            if (bias < (-1* biasbound)) bias = biasbound * -1;
+            if ((diap + diap / 2) > 1)
+                offset = 1 - diap / 2 - diap;
+            if ((diap - diap / 2) < 0)
+                offset = -1 * diap + diap / 2;
+            diap += (MHeleper.RandomDouble() - 0.5) * diap + offset;
+            if (diap > 1) diap = 1;
+            if (diap < 0) diap = 0;
         }
 
         public Neuron(int weightscount, double _biasbound)

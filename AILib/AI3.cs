@@ -39,7 +39,7 @@ namespace AILib
 
             private void RandWeight(double diap)
             {
-                diap *= 30;
+                diap *= wd;
                 double offset = 0;
                 diap *= 2;
                 if ((w + diap / 2) > wd)
