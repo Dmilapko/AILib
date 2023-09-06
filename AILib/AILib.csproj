@@ -9,9 +9,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="AILib">
-      <HintPath>bin\Release\netcoreapp3.1\AILib.dll</HintPath>
-    </Reference>
     <Reference Include="Newtonsoft.Json">
       <HintPath>..\..\CarsGame\CarsGame\bin\Debug\netcoreapp3.1\Newtonsoft.Json.dll</HintPath>
     </Reference>

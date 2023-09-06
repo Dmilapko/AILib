@@ -25,7 +25,7 @@ namespace AILib
         public class NeuronFamilyEvo0
         {
             public bool alive = true;
-            public double value = 0.5;
+            public double value = 0;
             internal int inputing_me = 0;
             public List<ConnectionFamilyEvo0> connections = new List<ConnectionFamilyEvo0>();
 
@@ -73,13 +73,19 @@ namespace AILib
         public int input_count, output_count;
         public bool alive = true;
         public List<HistoryEvent> history = new List<HistoryEvent>();
-        public double goodness = 0;
-        public int generation = 0;
         public int total_connections;
         public List<Pair<int, int>> all_connections = new List<Pair<int, int>>();
         public List<Pair<int, int>> all_possible_connections = new List<Pair<int, int>>();
+        public int alive_neurons_count = 0;
+        public int killed_neurons_count = 0;
+        public List<int> alive_neurons = new List<int>();
 
         public abstract void CreateNewNeuron();
+
+        internal void PushNewNeuron()
+        {
+            CreateNewNeuron();
+        }
 
         public abstract void CreateNewConnection(int from, int to);
 
@@ -88,16 +94,17 @@ namespace AILib
             total_connections = 0;
             this.input_count = input_count;
             this.output_count = output_count;
-            for (int i = 0; i < input_count + output_count; i++) CreateNewNeuron();
+            for (int i = 0; i < input_count + output_count; i++) PushNewNeuron();
             SyncData();
         }
+
 
         /// <summary>
         /// Set input. Value must be centred from -1 to 1
         /// </summary>
         /// <param name="input_number"></param>
         /// <param name="value"></param>
-        public void SetInput(int input_number, double value)
+        public virtual void SetInput(int input_number, double value)
         {
             neurons[input_number].value = value;
             neurons[input_number].value = Math.Min(1, neurons[input_number].value);
@@ -117,6 +124,11 @@ namespace AILib
 
         public void AddConnection(int from, int to)
         {
+            if (neurons[from].connections.Count == 0)
+            {
+                alive_neurons_count++;
+                alive_neurons.Add(from);
+            }
             CreateNewConnection(from, to);
             history.Add(new AddedConnection(from, to));
             neurons[to].inputing_me++;
@@ -128,7 +140,7 @@ namespace AILib
         public void AddNeuron(int from, int to)
         {
             DeleteConnection(from, to, false);
-            CreateNewNeuron();
+            PushNewNeuron();
             history.Add(new AddedNeuron(from, to, neurons.Count - 1));
             AddConnection(from, neurons.Count - 1);
             AddConnection(neurons.Count-1, to);
@@ -140,6 +152,15 @@ namespace AILib
         }
 
         public void AddNeuron(Pair<int, int> from_to) => AddNeuron(from_to.First, from_to.Second);
+
+        public void KillNeuron(int id)
+        {
+            neurons[id].alive = false;
+            neurons[id].connections.Clear();
+            alive_neurons.Remove(id);
+            alive_neurons_count--;
+            killed_neurons_count++;
+        }
 
         public void DeleteConnection(int from, int to, bool clear = true)
         {
@@ -165,16 +186,23 @@ namespace AILib
                   }
               }*/
             total_connections--;
+            bool found_del = false;
             for (int i = 0; i < neurons[from].connections.Count; i++)
             {
                 if (neurons[from].connections[i].to_neuron == to)
                 {
                     neurons[from].connections.RemoveAt(i);
+                    found_del = true;
                     break;
                 }
             }
             neurons[to].inputing_me--;
-            if (clear)
+            if (!clear && (neurons[from].connections.Count == 0))
+            {
+                alive_neurons_count--;
+                alive_neurons.Remove(from);
+            }
+            if (clear && found_del) 
             {
                 for (int i = input_count + output_count; i < neurons.Count; i++)
                 {
@@ -185,12 +213,52 @@ namespace AILib
                             neurons[neurons[i].connections[j].to_neuron].inputing_me--;
                             total_connections--;
                         }
-                        neurons[i].alive = false;
+                        KillNeuron(i);
                         i = input_count + output_count;
                     }
                 }
+
+                bool found_blank = true;
+                if (neurons[from].connections.Count == 0)
+                {
+                    if (from >= input_count + output_count) KillNeuron(from);
+                    else
+                    {
+                        alive_neurons_count--;
+                        alive_neurons.Remove(from);
+                    }
+                }
+                while (found_blank)
+                {
+                    found_blank = false;
+                    for (int i = 0; i < neurons.Count; i++)
+                    {
+                        if (neurons[i].connections.Count != 0)
+                        {
+                            for (int j = 0; j < neurons[i].connections.Count; j++)
+                            {
+                                if (!neurons[neurons[i].connections[j].to_neuron].alive)
+                                {
+                                    neurons[i].connections.RemoveAt(j);
+                                    total_connections--;
+                                    j--;
+                                }
+                            }
+                            if (neurons[i].connections.Count == 0)
+                            {
+                                if (i >= input_count + output_count) KillNeuron(i);
+                                else
+                                {
+                                    alive_neurons_count--;
+                                    alive_neurons.Remove(i);
+                                }
+                                found_blank = true;
+                            }
+                        }
+                    }
+                }
+                history.Add(new RemovedConnection(from, to));
             }
-            history.Add(new RemovedConnection(from, to));
         }
 
         public void DeleteConnection(Pair<int, int> from_to) => DeleteConnection(from_to.First, from_to.Second);
