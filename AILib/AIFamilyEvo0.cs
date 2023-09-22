@@ -1,11 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Runtime;
-using Newtonsoft.Json;
-using System.Threading;
 using System.IO;
 using MonoHelper;
-using static AILib.AI5;
 
 namespace AILib
 {
@@ -35,12 +31,13 @@ namespace AILib
 
             public virtual double Calculate_Connection(int connection_id) { return 0; }
         }
-        [Serializable()]
+        /*[Serializable()]
         public class HistoryEvent { }
         [Serializable()]
         public class AddedConnection : HistoryEvent 
         {
             public int from, to;
+
             public AddedConnection(int from_neuron, int to_neuron)
             {
                 from = from_neuron;
@@ -51,6 +48,7 @@ namespace AILib
         public class AddedNeuron : HistoryEvent 
         {
             public int from, to, neuron_id;
+
             public AddedNeuron(int from_neuron, int to_neuron, int neuron_added_id)
             {
                 from = from_neuron;
@@ -69,16 +67,28 @@ namespace AILib
             }
         }
 
+        [Serializable()]
+        public class dddd : HistoryEvent
+        {
+            public int from, to;
+            public dddd(int from_neuron, int to_neuron)
+            {
+                from = from_neuron;
+                to = to_neuron;
+            }
+        }*/
+
         public List<NeuronFamilyEvo0> neurons = new List<NeuronFamilyEvo0>();
         public int input_count, output_count;
         public bool alive = true;
-        public List<HistoryEvent> history = new List<HistoryEvent>();
         public int total_connections;
         public List<Pair<int, int>> all_connections = new List<Pair<int, int>>();
         public List<Pair<int, int>> all_possible_connections = new List<Pair<int, int>>();
         public int alive_neurons_count = 0;
         public int killed_neurons_count = 0;
         public List<int> alive_neurons = new List<int>();
+        public List<byte[]> evolution_history = new List<byte[]>();
+        public List<Pair<int, Pair<int, int>>> added_neurons = new List<Pair<int, Pair<int, int>>>();
 
         public abstract void CreateNewNeuron();
 
@@ -98,6 +108,38 @@ namespace AILib
             SyncData();
         }
 
+
+        public abstract MemoryStream Serialize();
+        public abstract void AssignDeserialize(MemoryStream ms);
+
+        public abstract AIFamilyEvo0 DeserializeFromHistory(int cnt);
+
+        public static void ListToFile(List<AIFamilyEvo0> ais, string filename)
+        {
+            MemoryStream memoryStream = new MemoryStream();
+            memoryStream.Write(ais[0].Serialize().ToArray());
+            using (FileStream file = new FileStream(filename, FileMode.Create, System.IO.FileAccess.Write))
+            {
+                memoryStream.WriteTo(file);
+            }
+        }
+
+        
+        public static List<T> FileToList<T>(string filename) where T : AIFamilyEvo0
+        {
+            List<T> ais = new List<T>();
+            var rab = File.ReadAllBytes(filename);
+            using (var ms = new MemoryStream(rab))
+            {
+                while (ms.Position < ms.Length)
+                {
+                    T cai = (T)Activator.CreateInstance(typeof(T));
+                    cai.AssignDeserialize(ms);
+                    ais.Add(cai);
+                }
+            }
+            return ais;
+        }
 
         /// <summary>
         /// Set input. Value must be centred from -1 to 1
@@ -130,7 +172,6 @@ namespace AILib
                 alive_neurons.Add(from);
             }
             CreateNewConnection(from, to);
-            history.Add(new AddedConnection(from, to));
             neurons[to].inputing_me++;
             total_connections++;
         }
@@ -139,9 +180,9 @@ namespace AILib
 
         public void AddNeuron(int from, int to)
         {
+            added_neurons.Add(new Pair<int, Pair<int,int>>(neurons.Count, new Pair<int,int>(from, to)));
             DeleteConnection(from, to, false);
             PushNewNeuron();
-            history.Add(new AddedNeuron(from, to, neurons.Count - 1));
             AddConnection(from, neurons.Count - 1);
             AddConnection(neurons.Count-1, to);
         }
@@ -149,6 +190,7 @@ namespace AILib
         public virtual void MutateAI()
         {
             SyncData();
+            evolution_history.Add(Serialize().ToArray());
         }
 
         public void AddNeuron(Pair<int, int> from_to) => AddNeuron(from_to.First, from_to.Second);
@@ -257,7 +299,6 @@ namespace AILib
                         }
                     }
                 }
-                history.Add(new RemovedConnection(from, to));
             }
         }
 
