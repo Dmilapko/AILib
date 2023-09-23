@@ -106,6 +106,7 @@ namespace AILib
                 binwriter.Write(neurons.Count);
                 for (int i = 0; i < neurons.Count; i++)
                 {
+                    binwriter.Write(((Neuron)neurons[i]).bias);
                     binwriter.Write(neurons[i].value);
                     binwriter.Write(neurons[i].alive);
                 }
@@ -141,7 +142,9 @@ namespace AILib
                 int n_c = binreader.ReadInt32();
                 for (int i = 0; i < n_c; i++)
                 {
-                    neurons.Add(new Neuron(binreader.ReadDouble()));
+                    Neuron rn = new Neuron(binreader.ReadDouble());
+                    rn.value = binreader.ReadDouble();
+                    neurons.Add(rn);
                     neurons[i].alive = binreader.ReadBoolean();
                 }
                 all_connections.Clear();
@@ -154,6 +157,7 @@ namespace AILib
                     neurons[from].connections.Add(new Connection(to, weight));
                     neurons[to].inputing_me++;
                 }
+                added_neurons.Clear();
                 int a_n_c = binreader.ReadInt32();
                 for (int i = 0; i < a_n_c; i++)
                 {
@@ -322,10 +326,7 @@ namespace AILib
         public AI5 GetCopy()
         {
             AI5 res = MHeleper.CreateDeepCopy(this);
-            foreach (var item in res.neurons)
-            {
-                item.value = 0;
-            }
+            res.Reset();
             return res;
         }
 
@@ -334,6 +335,10 @@ namespace AILib
             foreach (Neuron neuron in neurons)
             {
                 neuron.value = 0;
+                foreach (Connection connection in neuron.connections)
+                {
+                    connection.max_flow = 0;
+                }
             }
         }
     }
